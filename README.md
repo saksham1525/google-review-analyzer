@@ -13,6 +13,7 @@ This tool extracts reviews from any Google Maps location, analyzes sentiment usi
 - **LLM**: Google Gemini-2.5-Flash (free tier)
 - **UI**: Streamlit
 - **Data Processing**: Pandas
+- **Visualization**: Plotly, Matplotlib, Seaborn
 
 ## Setup
 
@@ -40,6 +41,7 @@ Enter a Google Maps URL and click "Analyze" to get:
 - Average rating and sample size
 - Sentiment distribution
 - AI-generated insights (highlights, pain points, customer tips)
+- Interactive dashboard with EDA visualizations (ratings, sentiment analysis, text analysis, correlations)
 - Interactive chatbot for Q&A
 
 

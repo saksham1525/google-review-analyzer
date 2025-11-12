@@ -10,6 +10,7 @@ import streamlit as st
 from googlemaps import GoogleMapsScraper, clean_reviews
 from sentiment import SentimentAnalyzer
 from llm import GeminiAnalyzer
+from visualizations import *
 import pandas as pd
 
 st.set_page_config(page_title="Review Analyzer", page_icon="📊", layout="centered")
@@ -91,6 +92,51 @@ if 'insights' in st.session_state:
     # AI Insights
     st.markdown("---")
     st.markdown(insights['analysis'])
+    
+    # Visualization Dashboard
+    st.markdown("---")
+    st.header("Data Insights Dashboard")
+    
+    df_viz = st.session_state['df']
+    
+    tab1, tab2, tab3 = st.tabs(["📊 Overview", "😊 Sentiment", "📝 Text Analysis"])
+    
+    with tab1:
+        st.subheader("Rating Overview")
+        st.plotly_chart(plot_rating_distribution(df_viz), use_container_width=True)
+        
+        fig = plot_sentiment_proportion_by_rating(df_viz)
+        if fig:
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("No sentiment data available")
+    
+    with tab2:
+        st.subheader("Sentiment Analysis")
+        st.pyplot(plot_sentiment_pie(df_viz))
+        
+        st.markdown("#### Top Keywords")
+        col1, col2 = st.columns(2)
+        with col1:
+            kw_pos = plot_top_keywords(df_viz, 'POSITIVE')
+            if kw_pos:
+                st.pyplot(kw_pos)
+        with col2:
+            kw_neg = plot_top_keywords(df_viz, 'NEGATIVE')
+            if kw_neg:
+                st.pyplot(kw_neg)
+    
+    with tab3:
+        st.subheader("Text Analysis")
+        col1, col2 = st.columns(2)
+        with col1:
+            fig = plot_text_length_distribution(df_viz)
+            if fig:
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("No text length data available")
+        with col2:
+            st.pyplot(plot_correlation_heatmap(df_viz))
     
     # Chat
     st.markdown("---")

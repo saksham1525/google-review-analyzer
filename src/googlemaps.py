@@ -81,7 +81,7 @@ class GoogleMapsScraper:
         return parsed_reviews
 
     def __parse(self, review):
-        """Extract caption, rating, and date from review element"""
+        """Extract caption, rating, date, username, and user stats from review element"""
         item = {}
 
         try:
@@ -100,9 +100,22 @@ class GoogleMapsScraper:
         except Exception as e:
             relative_date = None
 
+        try:
+            username = review.find('div', class_='d4r55').text
+        except Exception as e:
+            username = 'Anonymous'
+
+        try:
+            review_count_text = review.find('div', class_='RfnDt').text
+            n_review_user = int(review_count_text.split(' ')[0].replace(',', ''))
+        except Exception as e:
+            n_review_user = 1
+
         item['caption'] = review_text
         item['relative_date'] = relative_date
         item['rating'] = rating
+        item['username'] = username
+        item['n_review_user'] = n_review_user
 
         return item
 
@@ -145,9 +158,10 @@ class GoogleMapsScraper:
 
 
 def clean_reviews(df):
-    """Clean review data and add has_text flag"""
+    """Clean review data and add calculated columns"""
     df['caption'] = df['caption'].fillna('')
     df['has_text'] = df['caption'].str.len() > 0
+    df['text_length'] = df['caption'].str.len()
     
     print(f"Reviews with text: {df['has_text'].sum()}")
     print(f"Rating-only: {(~df['has_text']).sum()}")
