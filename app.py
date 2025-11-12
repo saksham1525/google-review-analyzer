@@ -11,6 +11,9 @@ from googlemaps import GoogleMapsScraper, clean_reviews
 from sentiment import SentimentAnalyzer
 from llm import GeminiAnalyzer
 from visualizations import *
+from embeddings import EmbeddingGenerator
+from vector_store import ReviewVectorStore
+from rag_pipeline import RAGPipeline
 import pandas as pd
 
 st.set_page_config(page_title="Review Analyzer", page_icon="📊", layout="centered")
@@ -61,13 +64,36 @@ if st.button("Analyze", type="primary"):
                 analyzer = SentimentAnalyzer()
                 df = analyzer.analyze_reviews(df)
             
+            # Build Vector Store for RAG
+            with st.status("Building knowledge base...", expanded=True) as status:
+                st.write("Generating embeddings...")
+                embedder = EmbeddingGenerator()
+                embeddings, text_reviews = embedder.embed_reviews(df)
+                
+                st.write("Storing in vector database...")
+                vector_store = ReviewVectorStore(persist_directory="./chroma_db")
+                vector_store.create_collection("reviews")
+                vector_store.add_reviews(embeddings, text_reviews)
+                
+                st.write("Initializing RAG pipeline...")
+                rag_pipeline = RAGPipeline(vector_store, embedder)
+                
+                stats = vector_store.get_collection_stats()
+                status.update(
+                    label=f"Knowledge base ready ({stats['count']} reviews indexed)", 
+                    state="complete"
+                )
+            
             # Insights
             with st.status("Generating insights..."):
-                llm = GeminiAnalyzer()
+                llm = GeminiAnalyzer(rag_pipeline=rag_pipeline)
                 insights = llm.generate_insights(df)
             
+            # Store in session
             st.session_state['df'] = df
             st.session_state['insights'] = insights
+            st.session_state['rag_pipeline'] = rag_pipeline
+            st.session_state['llm'] = llm
             st.rerun()
             
         except Exception as e:
@@ -140,7 +166,12 @@ if 'insights' in st.session_state:
             st.markdown(prompt)
         
         with st.chat_message("assistant"):
-            llm = GeminiAnalyzer()
+            # Use RAG-enhanced LLM if available
+            if 'llm' in st.session_state:
+                llm = st.session_state['llm']
+            else:
+                llm = GeminiAnalyzer()
+            
             response = llm.ask_question(prompt, st.session_state['df'])
             st.markdown(response)
         

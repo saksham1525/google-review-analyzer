@@ -18,3 +18,5 @@ data/*.xlsx
 .DS_Store
 Thumbs.db
 
+# Vector Database
+chroma_db/
