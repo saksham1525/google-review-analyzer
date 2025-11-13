@@ -141,6 +141,14 @@ class GoogleMapsScraper:
 
         options.add_argument("--disable-notifications")
         options.add_argument("--accept-lang=en-GB")
+        
+        # Additional options for Streamlit Cloud deployment
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--disable-gpu")
+        options.add_argument("--disable-software-rasterizer")
+        options.add_argument("--disable-extensions")
+        
         input_driver = webdriver.Chrome(service=Service(), options=options)
 
         input_driver.get(GM_WEBPAGE)
