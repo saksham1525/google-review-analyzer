@@ -14,82 +14,73 @@ class GeminiAnalyzer:
     
     def __init__(self, rag_pipeline=None):
         self.model = genai.GenerativeModel('gemini-2.5-flash')
-        self.rag_pipeline = rag_pipeline  # Optional RAG pipeline for enhanced Q&A
+        self.rag_pipeline = rag_pipeline
         print("Gemini-2.5-Flash loaded!")
+    
+    def _calculate_stats(self, reviews_df):
+        """Calculate review statistics"""
+        text_reviews = reviews_df[reviews_df['has_text']]
+        sentiment_counts = text_reviews['sentiment'].value_counts().to_dict()
+        return {
+            'avg_rating': reviews_df['rating'].mean(),
+            'total': len(reviews_df),
+            'with_text': len(text_reviews),
+            'positive': sentiment_counts.get('POSITIVE', 0),
+            'neutral': sentiment_counts.get('NEUTRAL', 0),
+            'negative': sentiment_counts.get('NEGATIVE', 0)
+        }
     
     def generate_insights(self, reviews_df):
         """Generate overall insights from reviews"""
+        stats = self._calculate_stats(reviews_df)
         text_reviews = reviews_df[reviews_df['has_text']]
         
-        # Calculate metrics
-        avg_rating = reviews_df['rating'].mean()
-        total = len(reviews_df)
-        with_text = len(text_reviews)
-        sentiment_counts = text_reviews['sentiment'].value_counts().to_dict()
+        # Build prompt
+        reviews_text = "\n".join([
+            f"{row['rating']}★ [{row['sentiment']}]: {row['caption'][:300]}"
+            for _, row in text_reviews.head(15).iterrows()
+        ])
         
-        # Create prompt with sample reviews
         prompt = f"""Analyze these reviews briefly:
 
-Data:
-- Total: {total} reviews
-- With text: {with_text} reviews
-- Average rating: {avg_rating:.1f}/5
-- Sentiment: {sentiment_counts}
+Data: {stats['total']} reviews ({stats['with_text']} with text) | Avg: {stats['avg_rating']:.1f}/5 
+Sentiment: {stats['positive']} Positive, {stats['neutral']} Neutral, {stats['negative']} Negative
 
 Sample reviews:
-"""
-        
-        # Use first 15 reviews for quick insights
-        for idx, row in text_reviews.head(15).iterrows():
-            prompt += f"\n{row['rating']}★ [{row['sentiment']}]: {row['caption'][:300]}"
-        
-        prompt += """
+{reviews_text}
 
 Provide ONLY:
-1. Top positive highlights - 1-2 lines max, common positive themes/keywords
-2. Top negative pain points - 1-2 lines max, frequent complaints/keywords  
-3. Customer tips - 1-2 lines max, what to try/order, what to avoid, best dishes mentioned
+1. Top positive highlights - 1-2 lines max
+2. Top negative pain points - 1-2 lines max  
+3. Customer tips - 1-2 lines max (advice for potential customers, what to try/order, what to avoid, best dishes mentioned)
 
-Keep it crisp and professional. No markdown headers. Frame #3 as advice for potential customers."""
+Keep it crisp and professional. No markdown headers."""
         
         print("Generating insights...")
         response = self.model.generate_content(prompt)
-        
-        return {
-            'avg_rating': avg_rating,
-            'total': total,
-            'with_text': with_text,
-            'positive': sentiment_counts.get('POSITIVE', 0),
-            'neutral': sentiment_counts.get('NEUTRAL', 0),
-            'negative': sentiment_counts.get('NEGATIVE', 0),
-            'analysis': response.text
-        }
+        return {**stats, 'analysis': response.text}
     
     def ask_question(self, question, reviews_df):
-        """Answer user question using RAG (searches ALL reviews semantically)"""
+        """Answer user question using RAG (searches ALL reviews)"""
         if self.rag_pipeline:
             try:
-                stats = {
-                    'total': len(reviews_df),
-                    'avg_rating': reviews_df['rating'].mean(),
-                    'positive': len(reviews_df[reviews_df['sentiment'] == 'POSITIVE']),
-                    'neutral': len(reviews_df[reviews_df['sentiment'] == 'NEUTRAL']),
-                    'negative': len(reviews_df[reviews_df['sentiment'] == 'NEGATIVE'])
-                }
-                return self.rag_pipeline.query(question, top_k=15, df_stats=stats)
+                return self.rag_pipeline.query(question, top_k=15, df_stats=self._calculate_stats(reviews_df))
             except Exception as e:
                 print(f"RAG failed: {e}, using fallback")
         
         # Fallback: first 15 reviews
         text_reviews = reviews_df[reviews_df['has_text']]
+        reviews_text = "\n".join([
+            f"{row['rating']}⭐: {row['caption'][:300]}" 
+            for _, row in text_reviews.head(15).iterrows()
+        ])
+        
         context = f"""You are analyzing restaurant reviews.
-
-Total: {len(reviews_df)} reviews | Average: {reviews_df['rating'].mean():.1f}/5
+Total: {len(reviews_df)} | Average: {reviews_df['rating'].mean():.1f}/5
 
 Reviews:
-"""
-        for idx, row in text_reviews.head(15).iterrows():
-            context += f"\n{row['rating']}⭐: {row['caption'][:300]}"
-        
-        context += f"\n\nQuestion: {question}\nAnswer:"
+{reviews_text}
+
+Question: {question}
+Answer:"""
         return self.model.generate_content(context).text

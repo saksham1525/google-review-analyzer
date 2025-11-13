@@ -163,7 +163,6 @@ def clean_reviews(df):
     df['has_text'] = df['caption'].str.len() > 0
     df['text_length'] = df['caption'].str.len()
     
-    print(f"Reviews with text: {df['has_text'].sum()}")
-    print(f"Rating-only: {(~df['has_text']).sum()}")
-    
+    print(f"Total reviews: {len(df)}")
+    print(f"Reviews with text: {df['has_text'].sum()}, Rating-only: {(~df['has_text']).sum()}")
     return df

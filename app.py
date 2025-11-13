@@ -1,10 +1,10 @@
 """Google Review Analyzer - Streamlit App"""
 
-import sys
-import os
+import sys, os
 sys.path.append('src')
-
-os.environ['GOOGLE_API_KEY'] = 'AIzaSyDQmi1P2Lrq7sLP7z-urjipDA2I_36GrJY'
+os.environ['TOKENIZERS_PARALLELISM'] = 'false'
+if 'GOOGLE_API_KEY' not in os.environ:
+    raise ValueError("Google API key not found")
 
 import streamlit as st
 from googlemaps import GoogleMapsScraper, clean_reviews
@@ -41,6 +41,7 @@ if st.button("Analyze", type="primary"):
             # Scraping
             with st.status("Scraping reviews...", expanded=True) as status:
                 with GoogleMapsScraper(debug=False) as scraper:
+                    print("Scraping reviews...")
                     error = scraper.sort_by(url, 0)
                     if error != 0:
                         st.error("Failed to load reviews. Check URL format.")
@@ -89,7 +90,10 @@ if st.button("Analyze", type="primary"):
                 llm = GeminiAnalyzer(rag_pipeline=rag_pipeline)
                 insights = llm.generate_insights(df)
             
-            # Store in session
+            print("Processing complete!")
+            
+            # Store in session (clear old chat history for new location)
+            st.session_state.clear()
             st.session_state['df'] = df
             st.session_state['insights'] = insights
             st.session_state['rag_pipeline'] = rag_pipeline
@@ -127,9 +131,9 @@ if 'insights' in st.session_state:
     tab1, tab2, tab3 = st.tabs(["📊 Overview", "😊 Sentiment", "📝 Text Analysis"])
     
     with tab1:
-        st.plotly_chart(plot_rating_distribution(df_viz), use_container_width=True)
+        st.plotly_chart(plot_rating_distribution(df_viz), width='stretch')
         if fig := plot_sentiment_proportion_by_rating(df_viz):
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
     
     with tab2:
         st.pyplot(plot_sentiment_pie(df_viz))
@@ -145,7 +149,7 @@ if 'insights' in st.session_state:
         col1, col2 = st.columns(2)
         with col1:
             if fig := plot_text_length_distribution(df_viz):
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width='stretch')
         with col2:
             st.pyplot(plot_correlation_heatmap(df_viz))
     
@@ -169,8 +173,10 @@ if 'insights' in st.session_state:
             # Use RAG-enhanced LLM if available
             if 'llm' in st.session_state:
                 llm = st.session_state['llm']
+                print("Answering question using RAG: All reviews searched")
             else:
                 llm = GeminiAnalyzer()
+                print("Answering question using fallback: First 15 reviews searched")
             
             response = llm.ask_question(prompt, st.session_state['df'])
             st.markdown(response)
