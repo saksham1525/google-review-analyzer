@@ -1,6 +1,7 @@
 """Gemini AI for review insights and Q&A"""
 
 import os
+import time
 from dotenv import load_dotenv
 import google.generativeai as genai
 
@@ -13,7 +14,7 @@ class GeminiAnalyzer:
     """Generates insights and answers questions using Gemini"""
     
     def __init__(self, rag_pipeline=None):
-        self.model = genai.GenerativeModel('gemini-2.5-flash')
+        self.model = genai.GenerativeModel('gemini-2.5-flash', generation_config={'timeout': 120})
         self.rag_pipeline = rag_pipeline
         print("Gemini-2.5-Flash loaded!")
     
@@ -57,8 +58,17 @@ Provide ONLY:
 Keep it crisp and professional. No markdown headers."""
         
         print("Generating insights...")
-        response = self.model.generate_content(prompt)
-        return {**stats, 'analysis': response.text}
+        for attempt in range(3):
+            try:
+                response = self.model.generate_content(prompt)
+                return {**stats, 'analysis': response.text}
+            except Exception as e:
+                if ('503' in str(e) or 'overloaded' in str(e).lower()) and attempt < 2:
+                    wait = 2 ** attempt
+                    print(f"API overloaded, retry {wait}s (attempt {attempt + 1}/3)")
+                    time.sleep(wait)
+                else:
+                    raise
     
     def ask_question(self, question, reviews_df):
         """Answer user question using RAG (searches ALL reviews)"""
@@ -83,4 +93,13 @@ Reviews:
 
 Question: {question}
 Answer:"""
-        return self.model.generate_content(context).text
+        for attempt in range(3):
+            try:
+                return self.model.generate_content(context).text
+            except Exception as e:
+                if ('503' in str(e) or 'overloaded' in str(e).lower()) and attempt < 2:
+                    wait = 2 ** attempt
+                    print(f"API overloaded, retry {wait}s (attempt {attempt + 1}/3)")
+                    time.sleep(wait)
+                else:
+                    raise
