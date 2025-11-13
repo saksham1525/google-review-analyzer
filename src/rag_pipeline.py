@@ -3,7 +3,6 @@
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.schema import HumanMessage, SystemMessage
 import os
-import time
 
 
 class RAGPipeline:
@@ -19,8 +18,7 @@ class RAGPipeline:
             model="gemini-2.5-flash",
             google_api_key=os.getenv('GOOGLE_API_KEY'),
             temperature=0.7,
-            timeout=120,  # 2 min timeout
-            max_retries=3,  # Built-in retry
+            max_retries=3,
             convert_system_message_to_human=True
         )
         print("RAG Pipeline initialized with Gemini-2.5-Flash")

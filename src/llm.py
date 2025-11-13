@@ -14,7 +14,7 @@ class GeminiAnalyzer:
     """Generates insights and answers questions using Gemini"""
     
     def __init__(self, rag_pipeline=None):
-        self.model = genai.GenerativeModel('gemini-2.5-flash', generation_config={'timeout': 120})
+        self.model = genai.GenerativeModel('gemini-2.5-flash')
         self.rag_pipeline = rag_pipeline
         print("Gemini-2.5-Flash loaded!")
     
