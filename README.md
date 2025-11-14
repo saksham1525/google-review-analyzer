@@ -2,6 +2,8 @@
 
 AI-powered Google Maps review analyzer with RAG-based Q&A. Scrapes reviews, performs sentiment analysis, and enables semantic search across all reviews using vector embeddings.
 
+**Live Demo**: [https://review-analyzer-saksham1525.streamlit.app/](https://review-analyzer-saksham1525.streamlit.app/)
+
 ## Overview
 
 This tool extracts reviews from any Google Maps location, analyzes sentiment using **DistilBERT**, and generates insights using **Gemini-2.5-Flash**. Features a **RAG-powered chatbot** that searches through ALL reviews semantically to answer questions accurately.
@@ -69,5 +71,6 @@ Enter a Google Maps URL and click "Analyze" to get:
 - Default: 100 reviews (configurable via UI)
 - Sentiment model uses 512 char limit per review
 - RAG pipeline truncates reviews to 300 chars when sending to LLM
-- All limits are configurable in code for productinon use
+- **Deployment**: Implements exponential backoff retry for Gemini API to handle rate limits (Streamlit Cloud apps share IPs, causing quota conflicts)
+- All limits are configurable in code for production use
 
